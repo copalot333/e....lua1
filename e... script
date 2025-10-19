@@ -1,0 +1,460 @@
+-- LocalScript in StarterPlayerScripts
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+print("Script started") -- Debug: Confirm script runs
+
+-- Function to get or wait for character and its components
+local function getCharacter()
+    local character = LocalPlayer.Character
+    if not character then
+        print("Waiting for character")
+        character = LocalPlayer.CharacterAdded:Wait()
+    end
+    local humanoid = character:WaitForChild("Humanoid", 5)
+    local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+    if not humanoid or not rootPart then
+        warn("Character components not found")
+        return nil, nil, nil
+    end
+    return character, humanoid, rootPart
+end
+
+-- Function to set CanCollide for noclip (client-side, HD Admin-style)
+local function setCollisionGroupRecursive(object, canCollide)
+    local success, errorMsg = pcall(function()
+        if object:IsA("BasePart") and object.Name ~= "HumanoidRootPart" then
+            object.CanCollide = canCollide
+        end
+        for _, child in ipairs(object:GetChildren()) do
+            setCollisionGroupRecursive(child, canCollide)
+        end
+    end)
+    if not success then
+        warn("Failed to set CanCollide: " .. tostring(errorMsg))
+    end
+end
+
+-- Create GUI
+print("Creating GUI")
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui", 5)
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Enabled = true
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 220, 0, 350)
+Frame.Position = UDim2.new(0.5, -110, 0.5, -175)
+Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Frame.BorderSizePixel = 0
+Frame.Parent = ScreenGui
+
+-- Add UIGradient for dark-grey-to-black theme
+local Gradient = Instance.new("UIGradient")
+Gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 30)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(15, 15, 15)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 10))
+})
+Gradient.Transparency = NumberSequence.new(0)
+Gradient.Rotation = 45
+Gradient.Parent = Frame
+
+-- Add UIStroke for animated glow effect
+local FrameStroke = Instance.new("UIStroke")
+FrameStroke.Thickness = 2
+FrameStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+FrameStroke.Parent = Frame
+
+-- Add UICorner for rounded edges
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 10)
+Corner.Parent = Frame
+
+-- Add Title Label
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(0, 200, 0, 30)
+TitleLabel.Position = UDim2.new(0, 10, 0, 10)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "e...'s script"
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 16
+TitleLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+TitleLabel.Parent = Frame
+local TitleStroke = Instance.new("UIStroke")
+TitleStroke.Thickness = 1
+TitleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+TitleStroke.Parent = TitleLabel
+
+-- Minimize/Maximize Button
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Size = UDim2.new(0, 30, 0, 30)
+minimizeButton.Position = UDim2.new(1, -40, 0, 10)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+minimizeButton.Text = "-"
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.TextSize = 20
+minimizeButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+local minButtonCorner = Instance.new("UICorner")
+minButtonCorner.CornerRadius = UDim.new(0, 5)
+minButtonCorner.Parent = minimizeButton
+local minButtonStroke = Instance.new("UIStroke")
+minButtonStroke.Thickness = 1
+minButtonStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+minButtonStroke.Parent = minimizeButton
+minimizeButton.Parent = Frame
+
+local isMinimized = false
+local originalSize = Frame.Size
+local buttons = {}
+
+-- Function to create styled buttons
+local function createButton(name, position, callback)
+    print("Creating button: " .. name)
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(0, 200, 0, 50)
+    Button.Position = UDim2.new(0, 10, 0, position)
+    Button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    Button.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Button.Text = name
+    Button.Font = Enum.Font.GothamBold
+    Button.TextSize = 18
+    Button.Parent = Frame
+    local ButtonCorner = Instance.new("UICorner")
+    ButtonCorner.CornerRadius = UDim.new(0, 8)
+    ButtonCorner.Parent = Button
+    local ButtonStroke = Instance.new("UIStroke")
+    ButtonStroke.Thickness = 1
+    ButtonStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    ButtonStroke.Parent = Button
+    -- Hover effect (visual only)
+    Button.MouseEnter:Connect(function()
+        Button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    end)
+    Button.MouseLeave:Connect(function()
+        Button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    end)
+    Button.Activated:Connect(function()
+        print(name .. " button activated")
+        callback()
+    end)
+    table.insert(buttons, Button)
+    return Button
+end
+
+local function toggleMinimize()
+    isMinimized = not isMinimized
+    if isMinimized then
+        originalSize = Frame.Size
+        Frame.Size = UDim2.new(0, 40, 0, 40)
+        minimizeButton.Text = "+"
+        TitleLabel.Visible = false
+        for _, button in ipairs(buttons) do
+            if button ~= minimizeButton then
+                button.Visible = false
+            end
+        end
+    else
+        Frame.Size = originalSize
+        minimizeButton.Text = "-"
+        TitleLabel.Visible = true
+        for _, button in ipairs(buttons) do
+            if button ~= minimizeButton then
+                button.Visible = true
+            end
+        end
+    end
+end
+
+minimizeButton.Activated:Connect(toggleMinimize)
+
+-- Drag functionality for the Frame
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+Frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Frame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+Frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- New Fly Script (Camera-relative, normal axes, integrated into GUI)
+local flying = false
+local bodyGyro, bodyVelocity
+local SPEED = 60
+local INVERT_FORWARD = false
+local flyButton = nil
+
+local function getRawInputComponents()
+    local character, humanoid, root = getCharacter()
+    if not humanoid or not root then return 0, 0, 0 end
+    local mv = humanoid.MoveDirection
+    if mv.Magnitude == 0 then
+        return 0, 0, 0
+    end
+
+    local cam = workspace.CurrentCamera.CFrame
+    local right = cam.RightVector
+    local forward = cam.LookVector
+
+    local x = mv:Dot(right)
+    local z = mv:Dot(forward)
+    local y = mv.Y
+
+    if INVERT_FORWARD then
+        z = -z
+    end
+
+    return x, z, y
+end
+
+local function startFlying()
+    if flying then return end
+    local character, humanoid, root = getCharacter()
+    if not character or not humanoid or not root then
+        warn("Cannot fly: Character not ready")
+        return
+    end
+    flying = true
+    humanoid.PlatformStand = true
+    setCollisionGroupRecursive(character, false) -- Enable noclip
+
+    bodyGyro = Instance.new("BodyGyro")
+    bodyVelocity = Instance.new("BodyVelocity")
+
+    bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bodyGyro.P = 9e4
+    bodyGyro.CFrame = root.CFrame
+    bodyVelocity.Velocity = Vector3.zero
+
+    bodyGyro.Parent = root
+    bodyVelocity.Parent = root
+
+    if flyButton then
+        flyButton.Text = "Stop"
+    end
+    game.StarterGui:SetCore("SendNotification", {Title="Fly Activated"; Text="Toggle: F or Fly button"; Duration=1})
+
+    local conn
+    conn = RunService.RenderStepped:Connect(function(dt)
+        if not flying or not root or not humanoid.Parent or not workspace.CurrentCamera then
+            if conn then conn:Disconnect() end
+            stopFlying()
+            return
+        end
+
+        setCollisionGroupRecursive(character, false) -- Re-apply noclip
+        bodyGyro.CFrame = CFrame.new(root.Position, root.Position + workspace.CurrentCamera.CFrame.LookVector)
+
+        local ix, iz, iy = getRawInputComponents()
+
+        local cam = workspace.CurrentCamera.CFrame
+        local camForward = cam.LookVector
+        local camRight = cam.RightVector
+        local camUp = cam.UpVector
+
+        local horiz = (camRight * ix) + (Vector3.new(camForward.X, 0, camForward.Z).Unit * iz)
+
+        local tiltY = camForward.Y * iz
+        local directY = iy
+
+        local final = horiz + Vector3.new(0, tiltY + directY, 0)
+
+        if final.Magnitude > 0.001 then
+            final = final.Unit * SPEED
+            bodyVelocity.Velocity = final
+        else
+            bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        end
+    end)
+end
+
+local function stopFlying()
+    local character, humanoid = getCharacter()
+    flying = false
+    if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
+    if bodyVelocity then bodyVelocity:Destroy(); bodyVelocity = nil end
+    if humanoid then humanoid.PlatformStand = false end
+    if character then setCollisionGroupRecursive(character, true) end -- Restore collisions
+    if flyButton then flyButton.Text = "Fly" end
+    game.StarterGui:SetCore("SendNotification", {Title="Fly Deactivated"; Text="Toggle: F or Fly button"; Duration=1})
+end
+
+local function toggleFly()
+    print("Toggling Fly")
+    if flying then
+        stopFlying()
+    else
+        startFlying()
+    end
+end
+
+-- Spin Script
+local spinning = false
+local bodyAngularVelocity = nil
+local function toggleSpin()
+    print("Toggling Spin")
+    local _, _, rootPart = getCharacter()
+    if not rootPart then return end
+    spinning = not spinning
+    if not spinning then
+        if bodyAngularVelocity then bodyAngularVelocity:Destroy() end
+        print("Spin disabled")
+        return
+    end
+    bodyAngularVelocity = Instance.new("BodyAngularVelocity")
+    bodyAngularVelocity.MaxTorque = Vector3.new(0, math.huge, 0)
+    bodyAngularVelocity.AngularVelocity = Vector3.new(0, 10, 0)
+    bodyAngularVelocity.Parent = rootPart
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if not spinning then
+            if bodyAngularVelocity then bodyAngularVelocity:Destroy() end
+            connection:Disconnect()
+        end
+    end)
+    print("Spin enabled")
+end
+
+-- Speed Script
+local function toggleSpeed()
+    print("Toggling Speed")
+    local _, humanoid = getCharacter()
+    if not humanoid then return end
+    local defaultSpeed = 16
+    local boostedSpeed = 32
+    humanoid.WalkSpeed = humanoid.WalkSpeed == defaultSpeed and boostedSpeed or defaultSpeed
+    print("Speed set to: " .. humanoid.WalkSpeed)
+end
+
+-- Teleport Script
+local function teleportToRandomPlayer()
+    print("Activating Teleport")
+    local _, _, rootPart = getCharacter()
+    if not rootPart then return end
+    local otherPlayers = Players:GetPlayers()
+    table.remove(otherPlayers, table.find(otherPlayers, LocalPlayer))
+    if #otherPlayers > 0 then
+        local randomPlayer = otherPlayers[math.random(1, #otherPlayers)]
+        if randomPlayer.Character and randomPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            rootPart.CFrame = randomPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 0, 3)
+            print("Teleported to " .. randomPlayer.Name)
+        else
+            warn("No valid target for teleport")
+        end
+    else
+        warn("No other players found")
+    end
+end
+
+-- Infinite Jump Script
+local function enableInfiniteJump()
+    print("Enabling Infinite Jump")
+    local jumping = false
+    UserInputService.JumpRequest:Connect(function()
+        if jumping then return end
+        local _, humanoid = getCharacter()
+        if not humanoid then return end
+        jumping = true
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        wait(0.1)
+        jumping = false
+    end)
+    print("Infinite Jump enabled")
+end
+
+-- Handle character respawn
+LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+    print("Character respawned")
+    if flying then
+        toggleFly()
+        toggleFly() -- Re-enable fly
+    end
+    if spinning then
+        toggleSpin()
+        toggleSpin() -- Re-enable spin
+    end
+end)
+
+-- Create Buttons
+print("Creating buttons")
+flyButton = createButton("Fly", 40, toggleFly)
+buttons.fly = flyButton
+createButton("Spin", 100, toggleSpin)
+createButton("Speed", 160, toggleSpeed)
+createButton("Teleport", 220, teleportToRandomPlayer)
+createButton("Infinite Jump", 280, enableInfiniteJump)
+
+-- Bind Fly toggle to F key
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.F then
+        toggleFly()
+    end
+end)
+
+-- Animate glow effect
+local function animateGlow(object, stroke)
+    local tweenInfo = TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, -1, true)
+    local tween = TweenService:Create(stroke, tweenInfo, {Color = Color3.fromRGB(80, 80, 80)})
+    tween:Play()
+    tween.Completed:Connect(function()
+        local reverseTween = TweenService:Create(stroke, tweenInfo, {Color = Color3.fromRGB(60, 60, 60)})
+        reverseTween:Play()
+    end)
+end
+
+local function animateTextGlow(label)
+    local tweenInfo = TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, -1, true)
+    local tween = TweenService:Create(label, tweenInfo, {TextColor3 = Color3.fromRGB(255, 255, 255)})
+    tween:Play()
+    tween.Completed:Connect(function()
+        local reverseTween = TweenService:Create(label, tweenInfo, {TextColor3 = Color3.fromRGB(200, 200, 200)})
+        reverseTween:Play()
+    end)
+end
+
+animateGlow(Frame, FrameStroke)
+animateGlow(minimizeButton, minButtonStroke)
+animateGlow(TitleLabel, TitleStroke)
+animateTextGlow(TitleLabel)
+for _, button in ipairs(buttons) do
+    if button:FindFirstChild("UIStroke") then
+        animateGlow(button, button.UIStroke)
+    end
+end
+
+-- Make GUI visible
+print("GUI should now be visible")
+Frame.Visible = true
