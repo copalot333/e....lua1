@@ -331,6 +331,7 @@ local function toggleSpin()
     if not spinning then
         if bodyAngularVelocity then bodyAngularVelocity:Destroy() end
         print("Spin disabled")
+        game.StarterGui:SetCore("SendNotification", {Title="Spin Deactivated"; Text="Toggle: Spin button"; Duration=1})
         return
     end
     bodyAngularVelocity = Instance.new("BodyAngularVelocity")
@@ -345,6 +346,7 @@ local function toggleSpin()
         end
     end)
     print("Spin enabled")
+    game.StarterGui:SetCore("SendNotification", {Title="Spin Activated"; Text="Toggle: Spin button"; Duration=1})
 end
 
 -- Speed Script
@@ -356,6 +358,11 @@ local function toggleSpeed()
     local boostedSpeed = 32
     humanoid.WalkSpeed = humanoid.WalkSpeed == defaultSpeed and boostedSpeed or defaultSpeed
     print("Speed set to: " .. humanoid.WalkSpeed)
+    if humanoid.WalkSpeed == boostedSpeed then
+        game.StarterGui:SetCore("SendNotification", {Title="Speed Boost Activated"; Text="Toggle: Speed button"; Duration=1})
+    else
+        game.StarterGui:SetCore("SendNotification", {Title="Speed Boost Deactivated"; Text="Toggle: Speed button"; Duration=1})
+    end
 end
 
 -- Teleport Script
@@ -370,6 +377,7 @@ local function teleportToRandomPlayer()
         if randomPlayer.Character and randomPlayer.Character:FindFirstChild("HumanoidRootPart") then
             rootPart.CFrame = randomPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 0, 3)
             print("Teleported to " .. randomPlayer.Name)
+            game.StarterGui:SetCore("SendNotification", {Title="Teleported"; Text="To " .. randomPlayer.Name; Duration=1})
         else
             warn("No valid target for teleport")
         end
@@ -378,20 +386,28 @@ local function teleportToRandomPlayer()
     end
 end
 
--- Infinite Jump Script
-local function enableInfiniteJump()
-    print("Enabling Infinite Jump")
-    local jumping = false
-    UserInputService.JumpRequest:Connect(function()
-        if jumping then return end
-        local _, humanoid = getCharacter()
-        if not humanoid then return end
-        jumping = true
-        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-        wait(0.1)
-        jumping = false
-    end)
-    print("Infinite Jump enabled")
+-- Infinite Jump Script with Toggle
+local infiniteJumpEnabled = false
+local infiniteJumpConnection = nil
+local function toggleInfiniteJump()
+    print("Toggling Infinite Jump")
+    local _, humanoid = getCharacter()
+    if not humanoid then return end
+
+    if not infiniteJumpEnabled then
+        infiniteJumpEnabled = true
+        infiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end)
+        game.StarterGui:SetCore("SendNotification", {Title="Infinite Jump Activated"; Text="Toggle: Infinite Jump button"; Duration=1})
+    else
+        infiniteJumpEnabled = false
+        if infiniteJumpConnection then
+            infiniteJumpConnection:Disconnect()
+            infiniteJumpConnection = nil
+        end
+        game.StarterGui:SetCore("SendNotification", {Title="Infinite Jump Deactivated"; Text="Toggle: Infinite Jump button"; Duration=1})
+    end
 end
 
 -- Handle character respawn
@@ -405,6 +421,12 @@ LocalPlayer.CharacterAdded:Connect(function(newCharacter)
         toggleSpin()
         toggleSpin() -- Re-enable spin
     end
+    if infiniteJumpEnabled and infiniteJumpConnection then
+        infiniteJumpConnection:Disconnect()
+        infiniteJumpConnection = nil
+        infiniteJumpEnabled = false
+        toggleInfiniteJump() -- Re-enable if it was on
+    end
 end)
 
 -- Create Buttons
@@ -414,7 +436,7 @@ buttons.fly = flyButton
 createButton("Spin", 100, toggleSpin)
 createButton("Speed", 160, toggleSpeed)
 createButton("Teleport", 220, teleportToRandomPlayer)
-createButton("Infinite Jump", 280, enableInfiniteJump)
+createButton("Infinite Jump", 280, toggleInfiniteJump)
 
 -- Bind Fly toggle to F key
 UserInputService.InputBegan:Connect(function(input, processed)
