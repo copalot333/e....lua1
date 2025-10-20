@@ -46,8 +46,8 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Enabled = true
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 220, 0, 350)
-Frame.Position = UDim2.new(0.5, -110, 0.5, -175)
+Frame.Size = UDim2.new(0, 150, 0, 300)
+Frame.Position = UDim2.new(0.5, -75, 0.5, -150)
 Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Frame.BorderSizePixel = 0
 Frame.Parent = ScreenGui
@@ -71,17 +71,17 @@ FrameStroke.Parent = Frame
 
 -- Add UICorner for rounded edges
 local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(0, 10)
+Corner.CornerRadius = UDim.new(0, 7)
 Corner.Parent = Frame
 
 -- Add Title Label
 local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(0, 200, 0, 30)
+TitleLabel.Size = UDim2.new(0, 130, 0, 20)
 TitleLabel.Position = UDim2.new(0, 10, 0, 10)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Text = "e...'s script"
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.TextSize = 16
+TitleLabel.TextSize = 12
 TitleLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 TitleLabel.Parent = Frame
 local TitleStroke = Instance.new("UIStroke")
@@ -91,15 +91,15 @@ TitleStroke.Parent = TitleLabel
 
 -- Minimize/Maximize Button
 local minimizeButton = Instance.new("TextButton")
-minimizeButton.Size = UDim2.new(0, 30, 0, 30)
-minimizeButton.Position = UDim2.new(1, -40, 0, 10)
+minimizeButton.Size = UDim2.new(0, 20, 0, 20)
+minimizeButton.Position = UDim2.new(1, -30, 0, 10)
 minimizeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 minimizeButton.Text = "-"
 minimizeButton.Font = Enum.Font.GothamBold
-minimizeButton.TextSize = 20
+minimizeButton.TextSize = 14
 minimizeButton.TextColor3 = Color3.fromRGB(200, 200, 200)
 local minButtonCorner = Instance.new("UICorner")
-minButtonCorner.CornerRadius = UDim.new(0, 5)
+minButtonCorner.CornerRadius = UDim.new(0, 3)
 minButtonCorner.Parent = minimizeButton
 local minButtonStroke = Instance.new("UIStroke")
 minButtonStroke.Thickness = 1
@@ -115,16 +115,16 @@ local buttons = {}
 local function createButton(name, position, callback)
     print("Creating button: " .. name)
     local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(0, 200, 0, 50)
+    Button.Size = UDim2.new(0, 130, 0, 35)
     Button.Position = UDim2.new(0, 10, 0, position)
     Button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     Button.TextColor3 = Color3.fromRGB(200, 200, 200)
     Button.Text = name
     Button.Font = Enum.Font.GothamBold
-    Button.TextSize = 18
+    Button.TextSize = 12
     Button.Parent = Frame
     local ButtonCorner = Instance.new("UICorner")
-    ButtonCorner.CornerRadius = UDim.new(0, 8)
+    ButtonCorner.CornerRadius = UDim.new(0, 5)
     ButtonCorner.Parent = Button
     local ButtonStroke = Instance.new("UIStroke")
     ButtonStroke.Thickness = 1
@@ -149,7 +149,7 @@ local function toggleMinimize()
     isMinimized = not isMinimized
     if isMinimized then
         originalSize = Frame.Size
-        Frame.Size = UDim2.new(0, 40, 0, 40)
+        Frame.Size = UDim2.new(0, 30, 0, 30)
         minimizeButton.Text = "+"
         TitleLabel.Visible = false
         for _, button in ipairs(buttons) do
@@ -410,6 +410,85 @@ local function toggleInfiniteJump()
     end
 end
 
+-- ESP Script
+local espEnabled = false
+local espConnections = {}
+local function toggleESP()
+    print("Toggling ESP")
+    local _, _, root = getCharacter()
+    if not root then return end
+
+    espEnabled = not espEnabled
+    if espEnabled then
+        game.StarterGui:SetCore("SendNotification", {Title="ESP Activated"; Text="Toggle: ESP button"; Duration=1})
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local function updateESP()
+                    local character = player.Character
+                    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+                    local humanoidRootPart = character.HumanoidRootPart
+                    local billboardGui = Instance.new("BillboardGui")
+                    billboardGui.Adornee = humanoidRootPart
+                    billboardGui.Size = UDim2.new(0, 100, 0, 50)
+                    billboardGui.StudsOffset = Vector3.new(0, 2, 0)
+                    billboardGui.AlwaysOnTop = true
+                    billboardGui.Parent = character
+
+                    local frame = Instance.new("Frame")
+                    frame.Size = UDim2.new(1, 0, 1, 0)
+                    frame.BackgroundTransparency = 1
+                    frame.Parent = billboardGui
+
+                    local outline = Instance.new("BoxHandleAdornment")
+                    outline.Adornee = humanoidRootPart
+                    outline.Size = humanoidRootPart.Size + Vector3.new(0.2, 0.2, 0.2)
+                    outline.Transparency = 0.7
+                    outline.Color3 = Color3.fromRGB(255, 0, 0)
+                    outline.AlwaysOnTop = true
+                    outline.ZIndex = 10
+                    outline.Parent = character
+
+                    local nameLabel = Instance.new("TextLabel")
+                    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+                    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+                    nameLabel.BackgroundTransparency = 1
+                    nameLabel.Text = player.Name
+                    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    nameLabel.TextSize = 14
+                    nameLabel.Font = Enum.Font.GothamBold
+                    nameLabel.Parent = frame
+
+                    table.insert(espConnections, {billboardGui, outline, nameLabel})
+                end
+                updateESP()
+                player.CharacterAdded:Connect(updateESP)
+            end
+        end
+        RunService.RenderStepped:Connect(function()
+            if not espEnabled then return end
+            for _, connectionData in ipairs(espConnections) do
+                local billboardGui, outline, nameLabel = connectionData[1], connectionData[2], connectionData[3]
+                if billboardGui and billboardGui.Parent and outline and outline.Parent and nameLabel and nameLabel.Parent then
+                    local character = billboardGui.Parent
+                    if character and character:FindFirstChild("HumanoidRootPart") then
+                        local humanoidRootPart = character.HumanoidRootPart
+                        outline.CFrame = humanoidRootPart.CFrame
+                    end
+                end
+            end
+        end)
+    else
+        game.StarterGui:SetCore("SendNotification", {Title="ESP Deactivated"; Text="Toggle: ESP button"; Duration=1})
+        for _, connectionData in ipairs(espConnections) do
+            local billboardGui, outline, nameLabel = connectionData[1], connectionData[2], connectionData[3]
+            if billboardGui then billboardGui:Destroy() end
+            if outline then outline:Destroy() end
+            if nameLabel then nameLabel:Destroy() end
+        end
+        espConnections = {}
+    end
+end
+
 -- Handle character respawn
 LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     print("Character respawned")
@@ -427,16 +506,21 @@ LocalPlayer.CharacterAdded:Connect(function(newCharacter)
         infiniteJumpEnabled = false
         toggleInfiniteJump() -- Re-enable if it was on
     end
+    if espEnabled then
+        toggleESP()
+        toggleESP() -- Re-enable ESP
+    end
 end)
 
 -- Create Buttons
 print("Creating buttons")
-flyButton = createButton("Fly", 40, toggleFly)
+flyButton = createButton("Fly", 30, toggleFly)
 buttons.fly = flyButton
-createButton("Spin", 100, toggleSpin)
-createButton("Speed", 160, toggleSpeed)
-createButton("Teleport", 220, teleportToRandomPlayer)
-createButton("Infinite Jump", 280, toggleInfiniteJump)
+createButton("Spin", 70, toggleSpin)
+createButton("Speed", 110, toggleSpeed)
+createButton("Teleport", 150, teleportToRandomPlayer)
+createButton("Infinite Jump", 190, toggleInfiniteJump)
+createButton("ESP", 230, toggleESP)
 
 -- Bind Fly toggle to F key
 UserInputService.InputBegan:Connect(function(input, processed)
